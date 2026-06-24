@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Production Label System</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    padding: 20px;
+    background: #f5f5f5;
+}
+
+h2 {
+    margin-bottom: 15px;
+}
+
+select, input, button {
+    padding: 12px;
+    font-size: 16px;
+    margin: 5px;
+}
+
+button {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+table {
+    width: 100%;
+    margin-top: 15px;
+    border-collapse: collapse;
+    background: white;
+}
+
+td, th {
+    border: 1px solid #ddd;
+    padding: 10px;
+}
+
+.container {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Kitchen Production Labels</h2>
+
+<select id="product">
+    <option value="COOK">COOK</option>
+    <option value="PNUT">PNUT</option>
+    <option value="KIND">KIND</option>
+    <option value="BISC">BISC</option>
+    <option value="FERR">FERR</option>
+    <option value="MALT">MALT</option>
+    <option value="BOUNT">BOUNT</option>
+    <option value="SNICK">SNICK</option>
+    <option value="COCO">COCO</option>
+    <option value="PECAN">PECAN</option>
+    <option value="CRAN">CRAN</option>
+    <option value="BROW">BROW</option>
+    <option value="OCUP">OCUP</option>
+    <option value="PBBAR">PBBAR</option>
+    <option value="OREO">OREO</option>
+</select>
+
+<input id="qty" type="number" placeholder="Quantity">
+
+<button onclick="addItem()">Add Item</button>
+<button onclick="generatePDF()">Generate Labels</button>
+
+<table>
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Qty</th>
+        </tr>
+    </thead>
+    <tbody id="list"></tbody>
+</table>
+
+</div>
+
+<script>
+
+let items = [];
+
+// Add item
+function addItem() {
+    let product = document.getElementById("product").value;
+    let qty = parseInt(document.getElementById("qty").value);
+
+    if (!qty || qty <= 0) {
+        alert("Enter valid quantity");
+        return;
+    }
+
+    items.push({ product, qty });
+
+    document.getElementById("list").innerHTML += `
+        <tr>
+            <td>${product}</td>
+            <td>${qty}</td>
+        </tr>
+    `;
+
+    document.getElementById("qty").value = "";
+}
+
+// Julian Day (YY + day of year)
+function getJulian() {
+    let now = new Date();
+    let start = new Date(now.getFullYear(), 0, 0);
+    let diff = now - start;
+    let oneDay = 1000 * 60 * 60 * 24;
+    let day = Math.floor(diff / oneDay);
+
+    let year = now.getFullYear().toString().slice(-2);
+
+    return year + String(day).padStart(3, "0");
+}
+
+// Generate PDF labels
+function generatePDF() {
+
+    if (items.length === 0) {
+        alert("No items added");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+
+    let doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: [400, 300]
+    });
+
+    let total = items.reduce((sum, i) => sum + i.qty, 0);
+    let count = 1;
+
+    const pageWidth = 400;
+    const centerX = pageWidth / 2;
+
+    items.forEach(item => {
+
+        for (let i = 0; i < item.qty; i++) {
+
+            let batch = "B" + String(count).padStart(6, "0");
+            let julian = getJulian();
+
+            let code = `${item.product}-${julian}-${batch}`;
+
+            doc.setFont("helvetica", "bold");
+
+            // PRODUCT (centered)
+            doc.setFontSize(70);
+            doc.text(item.product, centerX, 90, { align: "center" });
+
+            // BATCH CODE (centered, +10 size increase)
+            doc.setFontSize(55);
+            doc.text(code, centerX, 170, { align: "center" });
+
+            if (count < total) {
+                doc.addPage([400, 300], "landscape");
+            }
+
+            count++;
+        }
+    });
+
+    doc.save("kitchen_labels.pdf");
+}
+
+</script>
+
+</body>
+</html>
