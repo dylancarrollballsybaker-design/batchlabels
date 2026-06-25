@@ -2,48 +2,48 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Production Label System</title>
+<title>Kitchen Production Labels</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body {
-    font-family: Arial;
-    padding: 20px;
-    background: #f5f5f5;
+body{
+    font-family: Arial, sans-serif;
+    background:#f5f5f5;
+    padding:20px;
 }
 
-h2 {
-    margin-bottom: 15px;
+.container{
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    max-width:900px;
 }
 
-select, input, button {
-    padding: 12px;
-    font-size: 16px;
-    margin: 5px;
+h2{
+    margin-top:0;
 }
 
-button {
-    cursor: pointer;
-    font-weight: bold;
+select, input, button{
+    padding:12px;
+    font-size:16px;
+    margin:5px;
 }
 
-table {
-    width: 100%;
-    margin-top: 15px;
-    border-collapse: collapse;
-    background: white;
+button{
+    cursor:pointer;
+    font-weight:bold;
 }
 
-td, th {
-    border: 1px solid #ddd;
-    padding: 10px;
+table{
+    width:100%;
+    margin-top:15px;
+    border-collapse:collapse;
 }
 
-.container {
-    background: white;
-    padding: 15px;
-    border-radius: 10px;
+th, td{
+    border:1px solid #ddd;
+    padding:10px;
 }
 </style>
 </head>
@@ -72,7 +72,7 @@ td, th {
     <option value="OREO">OREO</option>
 </select>
 
-<input id="qty" type="number" placeholder="Quantity">
+<input id="qty" type="number" min="1" placeholder="Quantity">
 
 <button onclick="addItem()">Add Item</button>
 <button onclick="generatePDF()">Generate Labels</button>
@@ -93,12 +93,12 @@ td, th {
 
 let items = [];
 
-// Add item
-function addItem() {
-    let product = document.getElementById("product").value;
-    let qty = parseInt(document.getElementById("qty").value);
+function addItem(){
 
-    if (!qty || qty <= 0) {
+    const product = document.getElementById("product").value;
+    const qty = parseInt(document.getElementById("qty").value);
+
+    if(!qty || qty <= 0){
         alert("Enter valid quantity");
         return;
     }
@@ -115,65 +115,91 @@ function addItem() {
     document.getElementById("qty").value = "";
 }
 
-// Julian Day (YY + day of year)
-function getJulian() {
-    let now = new Date();
-    let start = new Date(now.getFullYear(), 0, 0);
-    let diff = now - start;
-    let oneDay = 1000 * 60 * 60 * 24;
-    let day = Math.floor(diff / oneDay);
+function getJulian(){
 
-    let year = now.getFullYear().toString().slice(-2);
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const day = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    const year = now.getFullYear().toString().slice(-2);
 
     return year + String(day).padStart(3, "0");
 }
 
-// Generate PDF labels
-function generatePDF() {
+function getProductionDate(){
 
-    if (items.length === 0) {
+    const now = new Date();
+
+    return (
+        String(now.getDate()).padStart(2,"0") + "/" +
+        String(now.getMonth()+1).padStart(2,"0") + "/" +
+        now.getFullYear()
+    );
+}
+
+function generatePDF(){
+
+    if(items.length === 0){
         alert("No items added");
         return;
     }
 
     const { jsPDF } = window.jspdf;
 
-    let doc = new jsPDF({
+    const doc = new jsPDF({
         orientation: "landscape",
         unit: "mm",
         format: [400, 300]
     });
 
-    let total = items.reduce((sum, i) => sum + i.qty, 0);
-    let count = 1;
+    const centerX = 200;
 
-    const pageWidth = 400;
-    const centerX = pageWidth / 2;
+    const julian = getJulian();
+    const productionDate = getProductionDate();
+
+    let totalLabels = items.reduce((sum, i) => sum + i.qty, 0);
+    let labelIndex = 0;
 
     items.forEach(item => {
 
-        for (let i = 0; i < item.qty; i++) {
+        let productCounter = 1;
 
-            let batch = "B" + String(count).padStart(6, "0");
-            let julian = getJulian();
+        for(let i = 0; i < item.qty; i++){
 
-            let code = `${item.product}-${julian}-${batch}`;
+            const batchNum = String(productCounter).padStart(2, "0");
+            const batchCode = `${item.product}-${julian}-${batchNum}`;
 
             doc.setFont("helvetica", "bold");
 
-            // PRODUCT (centered)
-            doc.setFontSize(70);
-            doc.text(item.product, centerX, 90, { align: "center" });
+            // PRODUCT LABEL (tight)
+            doc.setFontSize(36);
+            doc.text("PRODUCT:", centerX, 30, { align:"center" });
 
-            // BATCH CODE (centered, +10 size increase)
-            doc.setFontSize(55);
-            doc.text(code, centerX, 170, { align: "center" });
+            doc.setFontSize(88);
+            doc.text(item.product, centerX, 65, { align:"center" });
 
-            if (count < total) {
+            // BATCH CODE LABEL (tight)
+            doc.setFontSize(34);
+            doc.text("BATCH CODE:", centerX, 105, { align:"center" });
+
+            doc.setFontSize(110);
+            doc.text(batchCode, centerX, 140, { align:"center" });
+
+            // DATE LABEL (tight)
+            doc.setFontSize(34);
+            doc.text("PRODUCTION DATE:", centerX, 180, { align:"center" });
+
+            doc.setFontSize(110);
+            doc.text(productionDate, centerX, 215, { align:"center" });
+
+            labelIndex++;
+
+            if(labelIndex < totalLabels){
                 doc.addPage([400, 300], "landscape");
             }
 
-            count++;
+            productCounter++;
         }
     });
 
